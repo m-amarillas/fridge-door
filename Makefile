@@ -1,6 +1,7 @@
 .PHONY: up down api worker mobile
 
 build:
+	cd infra && supabase start
 	cd mobile && npm install
 
 up:	
