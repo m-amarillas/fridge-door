@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import actions, ingest
+from routers import actions, ingest, search
 
 load_dotenv()
 
@@ -17,3 +17,4 @@ app.add_middleware(
 
 app.include_router(ingest.router)
 app.include_router(actions.router)
+app.include_router(search.router)
