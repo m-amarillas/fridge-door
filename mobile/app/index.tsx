@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   Modal,
   ScrollView,
@@ -12,10 +13,18 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActionCard } from '../components/ActionCard';
+import type { Action } from '../lib/api';
+import { fetchActions } from '../lib/api';
 import type { Document } from '../lib/documents';
 import { fetchDocuments } from '../lib/documents';
+import { useDocumentRealtime } from '../lib/realtime';
 
 const INITIAL_LIMIT = 6;
+
+const GRID_PADDING = 12;
+const COLUMN_GAP = 8;
+const CARD_WIDTH = (Dimensions.get('window').width - GRID_PADDING * 2 - COLUMN_GAP) / 2;
 
 const STATUS_COLORS: Record<Document['status'], string> = {
   pending:    '#888',
@@ -28,6 +37,30 @@ const STATUS_COLORS: Record<Document['status'], string> = {
 function DocumentCard({ doc }: { doc: Document }) {
   const [imgError, setImgError] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [actions, setActions] = useState<Action[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [actionsFetched, setActionsFetched] = useState(false);
+
+  const { status: liveStatus, actionsStatus } = useDocumentRealtime(doc.id);
+
+  const effectiveStatus = liveStatus ?? doc.status;
+  const effectiveActionsStatus = actionsStatus ?? doc.actions_status;
+  const isProcessing = effectiveStatus !== 'indexed' && effectiveStatus !== 'failed';
+  // actionsStatus being non-null guarantees indexed — worker always sets indexed
+  // before touching actions_status, guarding against the Realtime timing race.
+  const isIndexed = effectiveStatus === 'indexed' || effectiveActionsStatus !== null;
+
+  useEffect(() => {
+    if (actionsFetched) return;
+    if (effectiveActionsStatus === 'ready') {
+      fetchActions(doc.id)
+        .then(r => {
+          setActions(r.actions);
+          setActionsFetched(true);
+        })
+        .catch(() => {});
+    }
+  }, [effectiveActionsStatus, doc.id, actionsFetched]);
 
   const typeLabel = doc.document_type
     ? doc.document_type.replace(/_/g, ' ')
@@ -37,8 +70,9 @@ function DocumentCard({ doc }: { doc: Document }) {
     month: 'short',
     day: 'numeric',
   });
-  const statusColor = STATUS_COLORS[doc.status];
+  const statusColor = STATUS_COLORS[effectiveStatus];
   const imageSource = doc.image_url && !imgError ? { uri: doc.image_url } : null;
+  const visibleActions = actions.filter(a => !dismissedIds.has(a.id));
 
   return (
     <>
@@ -47,18 +81,25 @@ function DocumentCard({ doc }: { doc: Document }) {
         onPress={() => setFullscreen(true)}
         activeOpacity={0.85}
       >
-        {imageSource ? (
-          <Image
-            source={imageSource}
-            style={cardStyles.image}
-            resizeMode="cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <View style={cardStyles.placeholder}>
-            <Text style={cardStyles.initial}>{initial}</Text>
-          </View>
-        )}
+        <View style={cardStyles.imageContainer}>
+          {imageSource ? (
+            <Image
+              source={imageSource}
+              style={cardStyles.image}
+              resizeMode="cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <View style={cardStyles.placeholder}>
+              <Text style={cardStyles.initial}>{initial}</Text>
+            </View>
+          )}
+          {isProcessing && (
+            <View style={cardStyles.spinnerOverlay}>
+              <ActivityIndicator color="#fff" size="small" />
+            </View>
+          )}
+        </View>
         <View style={cardStyles.meta}>
           <Text style={cardStyles.type} numberOfLines={1}>{typeLabel}</Text>
           <View style={cardStyles.statusRow}>
@@ -104,8 +145,37 @@ function DocumentCard({ doc }: { doc: Document }) {
               <Text style={modalStyles.ocrText}>{doc.ocr_text}</Text>
             ) : (
               <Text style={modalStyles.ocrPlaceholder}>
-                {doc.status === 'indexed' ? 'No text extracted.' : `Processing… (${doc.status})`}
+                {isIndexed ? 'No text extracted.' : `Processing… (${effectiveStatus})`}
               </Text>
+            )}
+
+            {/* Actions section */}
+            {isIndexed && (
+              <View style={modalStyles.actionsSection}>
+                {(effectiveActionsStatus === null || effectiveActionsStatus === 'analyzing') && (
+                  <View style={modalStyles.statusRow}>
+                    <ActivityIndicator color="#aaa" size="small" />
+                    <Text style={modalStyles.statusText}>Finding actions...</Text>
+                  </View>
+                )}
+                {effectiveActionsStatus === 'ready' && visibleActions.length > 0 && (
+                  <>
+                    <Text style={modalStyles.sectionLabel}>Suggested actions</Text>
+                    <View style={modalStyles.actionList}>
+                      {visibleActions.map(a => (
+                        <ActionCard
+                          key={a.id}
+                          action={a}
+                          onDismiss={() => setDismissedIds(prev => new Set(prev).add(a.id))}
+                        />
+                      ))}
+                    </View>
+                  </>
+                )}
+                {effectiveActionsStatus === 'failed' && (
+                  <Text style={modalStyles.quietText}>Couldn't extract actions.</Text>
+                )}
+              </View>
             )}
           </ScrollView>
         </View>
@@ -298,10 +368,13 @@ const styles = StyleSheet.create({
 
 const cardStyles = StyleSheet.create({
   card: {
-    width: '49%',
+    width: CARD_WIDTH,
     backgroundColor: '#1c1c1e',
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  imageContainer: {
+    position: 'relative',
   },
   image: {
     width: '100%',
@@ -311,6 +384,16 @@ const cardStyles = StyleSheet.create({
     width: '100%',
     aspectRatio: 3 / 4,
     backgroundColor: '#2c2c2e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinnerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -400,6 +483,35 @@ const modalStyles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   ocrPlaceholder: {
+    color: '#555',
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  actionsSection: {
+    marginTop: 24,
+    gap: 12,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusText: {
+    color: '#555',
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  sectionLabel: {
+    color: '#666',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  actionList: {
+    gap: 10,
+  },
+  quietText: {
     color: '#555',
     fontSize: 14,
     fontStyle: 'italic',

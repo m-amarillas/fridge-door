@@ -44,8 +44,10 @@ func Analyze(ocrText, documentType string) ([]SuggestedAction, error) {
 	reqBody := claudeRequest{
 		Model:     claudeModel,
 		MaxTokens: maxTokens,
-		System:    systemPrompt,
-		Tools:     actionTools,
+		System: []systemBlock{
+			{Type: "text", Text: systemPrompt, CacheControl: &cacheControl{Type: "ephemeral"}},
+		},
+		Tools: actionTools,
 		Messages: []claudeMessage{
 			{Role: "user", Content: buildUserPrompt(ocrText, documentType)},
 		},
@@ -118,11 +120,21 @@ func buildUserPrompt(ocrText, documentType string) string {
 // ---------------------------------------------------------------------------
 
 type claudeRequest struct {
-	Model     string          `json:"model"`
-	MaxTokens int             `json:"max_tokens"`
-	System    string          `json:"system"`
-	Tools     []claudeTool    `json:"tools"`
+	Model     string        `json:"model"`
+	MaxTokens int           `json:"max_tokens"`
+	System    []systemBlock `json:"system"`
+	Tools     []claudeTool  `json:"tools"`
 	Messages  []claudeMessage `json:"messages"`
+}
+
+type systemBlock struct {
+	Type         string        `json:"type"`
+	Text         string        `json:"text"`
+	CacheControl *cacheControl `json:"cache_control,omitempty"`
+}
+
+type cacheControl struct {
+	Type string `json:"type"`
 }
 
 type claudeMessage struct {

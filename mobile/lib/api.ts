@@ -1,7 +1,21 @@
 import { getAuthToken } from './supabase';
 
 export type UploadResult = {
-  text: string;
+  document_id: string;
+};
+
+export type Action = {
+  id: string;
+  action_type: 'calendar_event' | 'task' | 'reminder' | 'note';
+  status: 'suggested' | 'accepted' | 'dismissed' | 'completed';
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
+export type ActionsResponse = {
+  document_id: string;
+  actions_status: 'analyzing' | 'ready' | 'failed' | null;
+  actions: Action[];
 };
 
 export async function uploadDocument(imageUri: string): Promise<UploadResult> {
@@ -31,9 +45,15 @@ export async function uploadDocument(imageUri: string): Promise<UploadResult> {
   }
 
   const data = await response.json();
-  if (data.error) {
-    throw new Error(`OCR error: ${data.error}`);
-  }
+  return { document_id: data.document_id };
+}
 
-  return { text: data.text };
+export async function fetchActions(documentId: string): Promise<ActionsResponse> {
+  const base = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
+  const token = await getAuthToken();
+  const res = await fetch(`${base}/documents/${documentId}/actions`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Failed to fetch actions: ${res.status}`);
+  return res.json() as Promise<ActionsResponse>;
 }
