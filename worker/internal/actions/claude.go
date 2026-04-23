@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 )
+
+func debugActions() bool { return os.Getenv("DEBUG_ACTIONS") == "1" }
 
 const (
 	claudeModel    = "claude-sonnet-4-6"
@@ -52,6 +55,9 @@ func Analyze(ocrText, documentType string) ([]SuggestedAction, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
+	if debugActions() {
+		log.Printf("[actions] DEBUG request: %s", string(bodyBytes))
+	}
 
 	req, err := http.NewRequest(http.MethodPost, claudeEndpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
@@ -68,6 +74,9 @@ func Analyze(ocrText, documentType string) ([]SuggestedAction, error) {
 	defer resp.Body.Close()
 
 	respBytes, _ := io.ReadAll(resp.Body)
+	if debugActions() {
+		log.Printf("[actions] DEBUG response: %s", string(respBytes))
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("claude returned %d: %s", resp.StatusCode, string(respBytes))
 	}
@@ -81,6 +90,9 @@ func Analyze(ocrText, documentType string) ([]SuggestedAction, error) {
 	for _, block := range claudeResp.Content {
 		if block.Type != "tool_use" {
 			continue
+		}
+		if debugActions() {
+			log.Printf("[actions] DEBUG tool_use: %s → %s", block.Name, string(block.Input))
 		}
 		actions = append(actions, SuggestedAction{
 			ActionType: block.Name,
