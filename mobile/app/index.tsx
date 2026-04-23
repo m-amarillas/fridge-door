@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   Modal,
   ScrollView,
@@ -20,6 +21,10 @@ import { fetchDocuments } from '../lib/documents';
 import { useDocumentRealtime } from '../lib/realtime';
 
 const INITIAL_LIMIT = 6;
+
+const GRID_PADDING = 12;
+const COLUMN_GAP = 8;
+const CARD_WIDTH = (Dimensions.get('window').width - GRID_PADDING * 2 - COLUMN_GAP) / 2;
 
 const STATUS_COLORS: Record<Document['status'], string> = {
   pending:    '#888',
@@ -363,7 +368,7 @@ const styles = StyleSheet.create({
 
 const cardStyles = StyleSheet.create({
   card: {
-    width: '49%',
+    width: CARD_WIDTH,
     backgroundColor: '#1c1c1e',
     borderRadius: 10,
     overflow: 'hidden',
