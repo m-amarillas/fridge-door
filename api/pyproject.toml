@@ -1,0 +1,13 @@
+[project]
+name = "the-fridge-door-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "httpx>=0.28.0",
+    "python-dotenv>=1.0.0",
+    "supabase>=2.0.0",
+    "PyJWT>=2.8.0",
+]

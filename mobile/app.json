@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "The Fridge Door",
+    "slug": "the-fridge-door",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "thefridgedoor",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.thefridgedoor.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to capture school documents."
+      }
+    },
+    "android": {
+      "package": "com.thefridgedoor.mobile",
+      "permissions": ["android.permission.CAMERA"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Used to capture school documents."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
