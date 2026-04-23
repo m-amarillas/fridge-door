@@ -7,9 +7,9 @@ Surface LLM-extracted action suggestions to the user after a document is uploade
 | Part | Description | Status |
 |---|---|---|
 | Part 0 | Live post-upload view in scan screen | Done |
-| Part 1 | Data layer (Document type) | Partially done |
-| Part 2 | Card: live processing indicator | Not started |
-| Part 3 | Modal: action cards | Not started |
+| Part 1 | Data layer (Document type) | Done |
+| Part 2 | Card: live processing indicator | Done |
+| Part 3 | Modal: action cards | Done |
 
 ---
 

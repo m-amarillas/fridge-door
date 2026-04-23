@@ -11,50 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ActionCard } from '../components/ActionCard';
 import type { Action, UploadResult } from '../lib/api';
 import { fetchActions, uploadDocument } from '../lib/api';
-import { useActionsStatus, useDocumentStatus } from '../lib/realtime';
+import { useDocumentRealtime } from '../lib/realtime';
 
 type Phase = 'camera' | 'preview' | 'uploading' | 'result';
-
-function ActionCard({ action, onDismiss }: { action: Action; onDismiss: () => void }) {
-  const typeLabels: Record<string, string> = {
-    calendar_event: 'Calendar',
-    task: 'Task',
-    reminder: 'Reminder',
-    note: 'Note',
-  };
-
-  const p = action.payload;
-  const title = String(p.title ?? '');
-
-  let detail: string | null = null;
-  if (action.action_type === 'calendar_event' && p.date) {
-    detail = p.all_day ? String(p.date) : `${p.date}${p.time ? ` at ${p.time}` : ''}`;
-  } else if (action.action_type === 'task' && p.due_date) {
-    detail = `Due ${p.due_date}`;
-  } else if (action.action_type === 'reminder' && p.message) {
-    detail = String(p.message);
-  } else if (action.action_type === 'note' && p.content) {
-    detail = String(p.content);
-  }
-
-  return (
-    <View style={actionStyles.card}>
-      <Text style={actionStyles.type}>{typeLabels[action.action_type] ?? action.action_type}</Text>
-      <Text style={actionStyles.title}>{title}</Text>
-      {detail ? <Text style={actionStyles.detail} numberOfLines={2}>{detail}</Text> : null}
-      <View style={actionStyles.buttonRow}>
-        <TouchableOpacity style={actionStyles.doIt} onPress={onDismiss}>
-          <Text style={actionStyles.doItText}>Do it</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={actionStyles.notNow} onPress={onDismiss}>
-          <Text style={actionStyles.notNowText}>Not now</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -68,8 +30,7 @@ export default function ScanScreen() {
   const cameraRef = useRef<CameraView>(null);
 
   const documentId = uploadResult?.document_id ?? null;
-  const liveStatus = useDocumentStatus(documentId);
-  const actionsStatus = useActionsStatus(documentId);
+  const { status: liveStatus, actionsStatus } = useDocumentRealtime(documentId);
 
   // After upload the API confirms status is 'queued'. Use that as the floor
   // until the first Realtime UPDATE arrives.
@@ -154,7 +115,7 @@ export default function ScanScreen() {
   if (phase === 'preview' || phase === 'uploading') {
     return (
       <View style={styles.container}>
-        <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="contain" />
+        <Image source={{ uri: photoUri ?? undefined }} style={styles.preview} resizeMode="contain" />
         {uploadError && <Text style={styles.error}>{uploadError}</Text>}
         <View style={styles.row}>
           <Button title="Retake" onPress={handleRetake} disabled={phase === 'uploading'} />
@@ -179,7 +140,7 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <Image source={{ uri: photoUri }} style={resultStyles.thumbnail} resizeMode="contain" />
+      <Image source={{ uri: photoUri ?? undefined }} style={resultStyles.thumbnail} resizeMode="contain" />
       <ScrollView style={styles.resultScroll} contentContainerStyle={resultStyles.scrollContent}>
         {isProcessing && (
           <View style={resultStyles.statusRow}>
@@ -310,60 +271,5 @@ const resultStyles = StyleSheet.create({
     color: '#f44336',
     fontSize: 14,
     paddingVertical: 8,
-  },
-});
-
-const actionStyles = StyleSheet.create({
-  card: {
-    backgroundColor: '#1c1c1e',
-    borderRadius: 10,
-    padding: 14,
-    gap: 6,
-  },
-  type: {
-    color: '#888',
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  detail: {
-    color: '#aaa',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  doIt: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingVertical: 9,
-    alignItems: 'center',
-  },
-  doItText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  notNow: {
-    flex: 1,
-    borderRadius: 8,
-    paddingVertical: 9,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  notNowText: {
-    color: '#888',
-    fontSize: 14,
   },
 });

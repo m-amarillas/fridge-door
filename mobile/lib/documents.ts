@@ -5,6 +5,7 @@ export type Document = {
   image_url: string | null;  // pre-signed by the API; null if signing failed
   document_type: string | null;
   status: 'pending' | 'queued' | 'processing' | 'indexed' | 'failed';
+  actions_status: 'analyzing' | 'ready' | 'failed' | null;
   created_at: string;
   ocr_text: string | null;
 };

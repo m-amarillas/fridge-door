@@ -188,7 +188,7 @@ async def list_documents(
 
     result = (
         supabase.table("documents")
-        .select("id, image_url, document_type, status, created_at, ocr_text")
+        .select("id, image_url, document_type, status, actions_status, created_at, ocr_text")
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .limit(limit)
@@ -216,6 +216,7 @@ async def list_documents(
             "image_url": signed_url,
             "document_type": doc["document_type"],
             "status": doc["status"],
+            "actions_status": doc.get("actions_status"),
             "created_at": doc["created_at"],
             "ocr_text": doc.get("ocr_text"),
         })
