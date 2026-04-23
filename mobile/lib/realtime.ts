@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
 export type DocumentStatus = 'pending' | 'queued' | 'processing' | 'indexed' | 'failed';
+export type ActionsStatus = 'analyzing' | 'ready' | 'failed' | null;
 
 export function useDocumentStatus(documentId: string | null): DocumentStatus | null {
   const [status, setStatus] = useState<DocumentStatus | null>(null);
@@ -23,6 +24,36 @@ export function useDocumentStatus(documentId: string | null): DocumentStatus | n
         },
         (payload) => {
           setStatus(payload.new.status as DocumentStatus);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [documentId]);
+
+  return status;
+}
+
+export function useActionsStatus(documentId: string | null): ActionsStatus {
+  const [status, setStatus] = useState<ActionsStatus>(null);
+
+  useEffect(() => {
+    if (!documentId) return;
+
+    const channel = supabase
+      .channel(`doc-actions-${documentId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'documents',
+          filter: `id=eq.${documentId}`,
+        },
+        (payload) => {
+          setStatus(payload.new.actions_status as ActionsStatus);
         },
       )
       .subscribe();
