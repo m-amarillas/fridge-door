@@ -1,0 +1,27 @@
+# Environment variables — never commit credentials
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+
+# Go
+worker/build/
+worker/worker
+
+# Node / Expo
+mobile/node_modules/
+mobile/.expo/
+
+# overmind socket
+.overmind.sock
+
+# Python / uv
+api/.venv/
+api/**/__pycache__/
+api/**/*.pyc
