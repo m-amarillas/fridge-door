@@ -19,6 +19,7 @@ import { fetchActions } from '../lib/api';
 import type { Document } from '../lib/documents';
 import { fetchDocuments } from '../lib/documents';
 import { useDocumentRealtime } from '../lib/realtime';
+import { searchDocuments } from '../lib/search';
 
 const INITIAL_LIMIT = 6;
 
@@ -189,6 +190,7 @@ export default function HomeScreen() {
   const [query, setQuery] = useState('');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
@@ -219,17 +221,49 @@ export default function HomeScreen() {
     loadDocuments();
   }, [loadDocuments]);
 
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      loadDocuments();
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchDocuments(trimmed);
+        setDocuments(results);
+        setHasMore(false);
+      } catch {
+        setDocuments([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, loadDocuments]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Search box */}
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search documents..."
-          placeholderTextColor="#555"
-          value={query}
-          onChangeText={setQuery}
-        />
+        <View style={styles.searchInputWrapper}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search documents..."
+            placeholderTextColor="#555"
+            value={query}
+            onChangeText={setQuery}
+          />
+          {isSearching && (
+            <ActivityIndicator
+              color="#888"
+              size="small"
+              style={styles.searchSpinner}
+            />
+          )}
+        </View>
       </View>
 
       {/* Gallery */}
@@ -289,15 +323,23 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  searchInput: {
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#1c1c1e',
-    color: '#fff',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2c2c2e',
+  },
+  searchSpinner: {
+    paddingRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#fff',
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#2c2c2e',
   },
   scroll: {
     flex: 1,
